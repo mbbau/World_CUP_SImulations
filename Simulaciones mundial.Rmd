@@ -1,0 +1,108 @@
+---
+title: "Simulaciones explicadas"
+author: "Matias Baudino"
+date: "2022-11-24"
+output: html_document
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+
+library(tidyverse)
+library(patchwork)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introducción
+
+En este trabajo, utilizaremos datos históricos de los mundiales de futbol para simular los diferentes partidos de Quatar 2022 y obtener los resultados más probables en cada enfrentamiento. Para ello, generaremos las distribuciones de los goles que los equipos han hecho y han recibido. 
+
+## Dataset
+
+El dataset seleccionado para estas simulaciones podran encontrarlo en la página de [Kaggle](https://www.kaggle.com/datasets/abecklas/fifa-world-cup).
+
+De este Dataset utilizaremos unicamente el nombre del equipo local, los goles realizados por el equipo local y los goles recibidos. A la hora de generar las simulaciones haremos un par de supuestos en función de las distribuciones en cuanto al poder ofensivo y defensivo de cada equipo, y adaptaremos los resultados de forma acorde, es decir, si en una de las simulaciones un equipo hará 3 goles pero se enfrenta a un equipo que tiene un gran poder defensido y el mismo recibe solo 1, consideraremos entonces el promedio de los dos valores para la cantidad de goles que hará el equipo atacante, pero si el equipo que defiende no tiene un gran poder defensivo, el número de goles será el obtenido en la simulación.
+
+
+
+```{r World cup data}
+
+dataset <- read.csv("WorldCupMatches.csv")
+
+head(dataset)
+
+datos_a_utilzar <- dataset %>%
+  select(c(Home.Team.Name, 
+           Home.Team.Goals, 
+           Away.Team.Goals, 
+           Away.Team.Name))
+
+head(datos_a_utilzar)
+
+```
+
+
+## Distribuciones
+
+A continuación se presenta un ejemplo de las distribuciones que utilizaremos para cada equipo, es decir, en cada enfrentamiento se simularán cuantos goles puede hacer, como así también cuantos puede recibir cada equipo en la disputa, y en función de eso se computará el resultado siguiendo las reglas anteriormente descriptas.
+
+
+```{r Distributions, echo=FALSE, warning=FALSE}
+
+histograma_a_favor_Italia <- datos_a_utilzar %>%
+  filter(Home.Team.Name == "Italy") %>%
+  ggplot(aes(x=Home.Team.Goals))+
+  geom_histogram(binwidth = 1,
+                 fill = "darkgreen")+
+  ggtitle("Goles a favor de Italia")+
+  theme_minimal()+
+  labs(x = "Goles a favor",
+       y = element_blank())
+
+histograma_en_contra_Italia <- datos_a_utilzar %>%
+  filter(Home.Team.Name == "Italy") %>%
+  ggplot(aes(x=Away.Team.Goals))+
+  geom_histogram(binwidth = 1,
+                 fill = "darkblue")+
+  ggtitle("Goles en contra de Italia")+
+  theme_minimal()+
+  labs(x = "Goles en contra",
+       y = element_blank())
+
+histograma_a_favor_Italia + histograma_en_contra_Italia
+
+
+```
+
+De esta distribuciones computaremos las medias y los desvios con el objetivo de utilizarlos para realizar las simulaciones. El dataset final con estos datos se muestra a continuación.
+
+```{r dataset de Distributions, echo=FALSE, warning=FALSE}
+
+Distribuciones <- datos_a_utilzar %>%
+  remove_missing() %>%
+  group_by(Home.Team.Name) %>%
+  mutate(promedio_ofensivo = mean(Home.Team.Goals),
+         desvio_ofensivo = sd(Home.Team.Goals),
+         promedio_defensivo = mean(Away.Team.Goals),
+         desvio_defensivo = sd(Away.Team.Goals)) %>%
+  select(promedio_ofensivo,
+         desvio_ofensivo,
+         promedio_defensivo,
+         desvio_defensivo) %>%
+  distinct()
+
+head(Distribuciones)
+
+
+```
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
