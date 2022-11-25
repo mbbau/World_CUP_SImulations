@@ -79,13 +79,14 @@ De esta distribuciones computaremos las medias y los desvios con el objetivo de 
 ```{r dataset de Distributions, echo=FALSE, warning=FALSE}
 
 Distribuciones <- datos_a_utilzar %>%
-  remove_missing() %>%
+  drop_na() %>%
   group_by(Home.Team.Name) %>%
-  mutate(promedio_ofensivo = mean(Home.Team.Goals),
+  summarize(promedio_ofensivo = mean(Home.Team.Goals),
          desvio_ofensivo = sd(Home.Team.Goals),
          promedio_defensivo = mean(Away.Team.Goals),
          desvio_defensivo = sd(Away.Team.Goals)) %>%
-  select(promedio_ofensivo,
+  select(Home.Team.Name,
+         promedio_ofensivo,
          desvio_ofensivo,
          promedio_defensivo,
          desvio_defensivo) %>%
@@ -96,13 +97,81 @@ head(Distribuciones)
 
 ```
 
+## Simulaciones
+
+### Definición de reglas para simulación
+
+Para simular cada partido se computarán cuatro variables en cada partido:
+
+1 - Los goles que puede hacer en promedio cada equipo.
+2 - Los goles que puede recibir en promedio cada equipo.
+
+Con estos valores el resultado del partido estará dado por la relación entre los goles que puede marcar un equipo contra los que puede recibir el otro equipo, considerando que si los goles a favor son menor a los que puede recibir el otro equipo, se considerará el promedio de ambos valores, pero si los goles a favor son menores que los goles que recibe el equipo rival, entonces se computará este resutlado.
+
+A continuación se desarrolla la función que hará este computo.
+
+### Función para simular partidos
+
+```{r function for simulate games, echo=FALSE}
+plot(pressure)
+```
 
 ## Including Plots
 
 You can also embed plots, for example:
 
 ```{r pressure, echo=FALSE}
-plot(pressure)
+
+equipo1 = "Algeria"
+equipo2= "Brazil"
+
+simulacion <- function(equipo1,equipo2){
+  
+  datos_equipo1 <- Distribuciones %>%
+    filter(Home.Team.Name == equipo1)
+  
+  datos_equipo2 <- Distribuciones %>%
+    filter(Home.Team.Name == equipo2)
+  
+  runs = 1000
+  
+  goles_a_favor_equipo1 <- rnorm(runs,
+                                mean = datos_equipo1$promedio_ofensivo,
+                                sd = datos_equipo1$desvio_ofensivo) %>%
+    pmax(0) %>% #with this I filter values bellow zero
+    round()     #with this I round all the numbers
+  goles_en_contra_equipo1 <- rnorm(runs,
+                              mean = datos_equipo1$promedio_defensivo,
+                              sd = datos_equipo1$desvio_defensivo) %>%
+  pmax(0) %>% #with this I filter values bellow zero
+  round()     #with this I round all the numbers  
+  
+  goles_a_favor_equipo2 <- rnorm(runs,
+                                mean = datos_equipo2$promedio_ofensivo,
+                                sd = datos_equipo2$desvio_ofensivo) %>%
+    pmax(0) %>% #with this I filter values bellow zero
+    round()     #with this I round all the numbers
+  goles_en_contra_equipo2 <- rnorm(runs,
+                              mean = datos_equipo2$promedio_defensivo,
+                              sd = datos_equipo2$desvio_defensivo) %>%
+  pmax(0) %>% #with this I filter values bellow zero
+  round()     #with this I round all the numbers 
+  
+  gol_local <- cbind(goles_a_favor_equipo1,
+                     goles_en_contra_equipo2)
+  
+  gol_local <- gol_local %>%
+    mutate(gol_local = if(goles_a_favor_equipo1 < goles_en_contra_equipo2){
+      goles_a_favor_equipo1
+    }else{
+      (goles_a_favor_equipo1+goles_en_contra_equipo2)/2
+    })
+      
+  matches <- cbind(
+  )
+  
+}
+
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
