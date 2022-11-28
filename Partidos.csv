@@ -1,0 +1,49 @@
+Equipo1,Equipo2,Grupo
+Qatar,Ecuador,A
+England,Iran,B
+Senegal,Netherlands,A
+USA,Wales,B
+Argentina,Saudi Arabia,C
+Denmark,Tunisia,D
+Mexico,Poland,C
+France,Australia,D
+Morocco,Croatia,F
+Germany,Japan,E
+Spain,Costa Rica,E
+Belgium,Canada,F
+Switzerland,Cameroon,G
+Uruguay,South Korea,H
+Portugal,Ghana,H
+Brazil,Serbia,G
+Wales,Iran,B
+Qatar,Senegal,A
+Netherlands,Ecuador,A
+England,USA,B
+Tunisia,Australia,D
+Poland,Saudi Arabia,C
+France,Denmark,D
+Argentina,Mexico,C
+Japan,Costa Rica,E
+Belgium,Morocco,F
+Croatia,Canada,F
+Spain,Germany,E
+Cameroon,Serbia,G
+South Korea,Ghana,H
+Brazil,Switzerland,G
+Portugal,Uruguay,H
+Ecuador,Senegal,A
+Netherlands,Qatar,A
+Iran,USA,B
+Wales,England,B
+Tunisia,France,D
+Australia,Denmark,D
+Poland,Argentina,C
+Saudi Arabia,Mexico,C
+Croatia,Belgium,F
+Canada,Morocco,F
+Japan,Spain,E
+Costa Rica,Germany,E
+South Korea,Portugal,H
+Ghana,Uruguay,H
+Serbia,Switzerland,G
+Cameroon,Brazil,G

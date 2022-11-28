@@ -9,6 +9,9 @@ output: html_document
 
 library(tidyverse)
 library(patchwork)
+library(data.table)
+library(glue)
+library(gt)
 
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -38,6 +41,64 @@ datos_a_utilzar <- dataset %>%
            Away.Team.Name))
 
 head(datos_a_utilzar)
+
+```
+
+### Limpieza de datos
+
+En el dataset, existen varios nombres de equipos que tienen errores de ortografía, como así también se necesita utilizar además los resultados obtenidos por los equipos visitantes, es decir, extraer la última columna y anexar esos datos al final del dataset.
+
+```{r Using away.team data}
+
+segunda_tanda <- datos_a_utilzar %>%
+  select(c(Away.Team.Name,
+           Away.Team.Goals,
+           Home.Team.Goals,
+           Home.Team.Name))
+
+colnames(segunda_tanda) <- c("Home.Team.Name",
+                             "Home.Team.Goals",
+                             "Away.Team.Goals",
+                             "Away.Team.Name")
+
+head(segunda_tanda)
+
+datos_a_utilzar <- rbind(datos_a_utilzar,
+                         segunda_tanda)
+
+
+```
+Ahora que los datos ya están completos para ser utilizados, revisaremos los nombres de los equipos con el fin de detectar anomalías que deberan ser corregidas.
+
+```{r Cleanning team names, echo=FALSE}
+
+datos_a_utilzar$Home.Team.Name <- gsub("rn\">",
+                                       "",
+                                       as.character(datos_a_utilzar$Home.Team.Name))
+datos_a_utilzar$Home.Team.Name <- gsub("German DR",
+                                       "Germany",
+                                       as.character(datos_a_utilzar$Home.Team.Name))
+datos_a_utilzar$Home.Team.Name <- gsub("Germany FR",
+                                       "Germany",
+                                       as.character(datos_a_utilzar$Home.Team.Name))
+datos_a_utilzar$Home.Team.Name <- gsub("IR Iran",
+                                       "Iran",
+                                       as.character(datos_a_utilzar$Home.Team.Name))
+datos_a_utilzar$Home.Team.Name <- gsub("China PR",
+                                       "China",
+                                       as.character(datos_a_utilzar$Home.Team.Name))
+datos_a_utilzar$Home.Team.Name <- gsub("Soviet Union",
+                                       "Russia",
+                                       as.character(datos_a_utilzar$Home.Team.Name))
+datos_a_utilzar$Home.Team.Name <- gsub("Korea Republic",
+                                       "South Korea",
+                                       as.character(datos_a_utilzar$Home.Team.Name))
+datos_a_utilzar$Home.Team.Name <- gsub("Korea Republic",
+                                       "South Korea",
+                                       as.character(datos_a_utilzar$Home.Team.Name))
+
+
+unique(datos_a_utilzar$Home.Team.Name)
 
 ```
 
@@ -94,6 +155,9 @@ Distribuciones <- datos_a_utilzar %>%
 
 head(Distribuciones)
 
+qatar <- c("Qatar",1,1,1,1)
+
+Distribuciones <- rbind(Distribuciones, qatar)
 
 ```
 
@@ -112,20 +176,21 @@ A continuación se desarrolla la función que hará este computo.
 
 ### Función para simular partidos
 
-```{r function for simulate games, echo=FALSE}
-plot(pressure)
-```
 
-## Including Plots
+```{r pressure, echo=TRUE, warning=FALSE}
 
-You can also embed plots, for example:
+partidos_programados <- read.csv("Partidos.csv")
 
-```{r pressure, echo=FALSE}
+Distribuciones$promedio_ofensivo <- as.double(Distribuciones$promedio_ofensivo)
+Distribuciones$desvio_ofensivo <- as.double(Distribuciones$desvio_ofensivo)
+Distribuciones$promedio_defensivo <- as.double(Distribuciones$promedio_defensivo)
+Distribuciones$desvio_defensivo <- as.double(Distribuciones$desvio_defensivo)
 
-equipo1 = "Algeria"
-equipo2= "Brazil"
+for (i in 1:nrow(partidos_programados)) {
 
-simulacion <- function(equipo1,equipo2){
+  equipo1 <- partidos_programados$Equipo1[i]
+  
+  equipo2 <- partidos_programados$Equipo2[i]
   
   datos_equipo1 <- Distribuciones %>%
     filter(Home.Team.Name == equipo1)
@@ -133,7 +198,7 @@ simulacion <- function(equipo1,equipo2){
   datos_equipo2 <- Distribuciones %>%
     filter(Home.Team.Name == equipo2)
   
-  runs = 1000
+  runs = 10000
   
   goles_a_favor_equipo1 <- rnorm(runs,
                                 mean = datos_equipo1$promedio_ofensivo,
@@ -157,21 +222,59 @@ simulacion <- function(equipo1,equipo2){
   pmax(0) %>% #with this I filter values bellow zero
   round()     #with this I round all the numbers 
   
-  gol_local <- cbind(goles_a_favor_equipo1,
-                     goles_en_contra_equipo2)
+  gol_local <- as_tibble(cbind(goles_a_favor_equipo1,
+                     goles_en_contra_equipo2))
   
-  gol_local <- gol_local %>%
-    mutate(gol_local = if(goles_a_favor_equipo1 < goles_en_contra_equipo2){
-      goles_a_favor_equipo1
-    }else{
-      (goles_a_favor_equipo1+goles_en_contra_equipo2)/2
-    })
-      
-  matches <- cbind(
-  )
+  gol_local$gol_local <- round(case_when(goles_a_favor_equipo1 <= goles_en_contra_equipo2 ~ goles_a_favor_equipo1,
+                                   goles_a_favor_equipo1 > goles_en_contra_equipo2 ~ (goles_a_favor_equipo1+goles_en_contra_equipo2)/2 ))
+
+  gol_visitante <- as_tibble(cbind(goles_a_favor_equipo2,
+                     goles_en_contra_equipo1))
   
+  gol_visitante$gol_visitante <- round(case_when(goles_a_favor_equipo2 <= goles_en_contra_equipo1 ~ goles_a_favor_equipo2,
+                                   goles_a_favor_equipo2 > goles_en_contra_equipo1 ~ (goles_a_favor_equipo2+goles_en_contra_equipo1)/2 ))
+  
+  matches <- as_tibble(cbind(gol_local$gol_local, gol_visitante$gol_visitante))
+  colnames(matches) <- c("score_local", "score_visitante")
+  
+  matches$resultado <- case_when(matches$score_local > matches$score_visitante ~ equipo1,
+                                 matches$score_local < matches$score_visitante ~ equipo2,
+                                 matches$score_local == matches$score_visitante ~ "empate")
+
+distribucion_resultados <- matches %>%
+  group_by(resultado) %>%
+  dplyr::summarise(cnt = n()) %>%
+  mutate(freq = round(cnt / sum(cnt), 3)) %>%
+  arrange(desc(freq))
+
+detalle_resultados <- setDT(matches)[,list(Count=.N),names(matches)] %>%
+  arrange(desc(Count)) %>%
+  mutate(probabilidad = (Count / runs)*100)
+
+
+distribuciones_por_encuentro <- ggplot(distribucion_resultados, aes(x="", y=freq, fill=resultado)) +
+  geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0)+
+  theme_void() +
+  labs(title = glue("Distribución de resultados para {equipo1} vs {equipo2}"))
+
+
+plot(distribuciones_por_encuentro)
+
+print(head(detalle_resultados, 5))
+
+print(distribucion_resultados)
+
 }
+
 
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+### Partidos
+
+Una vez establecida la formula para generar las simulaciones, incluiremos un dataset nuevo que contiene todos los partidos que se deben disputar en la fase de grupos.
+
+
+
+
+
