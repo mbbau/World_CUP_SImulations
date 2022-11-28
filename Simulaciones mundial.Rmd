@@ -40,7 +40,8 @@ datos_a_utilzar <- dataset %>%
            Away.Team.Goals, 
            Away.Team.Name))
 
-head(datos_a_utilzar)
+head(datos_a_utilzar) %>% 
+  gt()
 
 ```
 
@@ -61,7 +62,8 @@ colnames(segunda_tanda) <- c("Home.Team.Name",
                              "Away.Team.Goals",
                              "Away.Team.Name")
 
-head(segunda_tanda)
+head(segunda_tanda) %>%
+  gt()
 
 datos_a_utilzar <- rbind(datos_a_utilzar,
                          segunda_tanda)
@@ -153,7 +155,8 @@ Distribuciones <- datos_a_utilzar %>%
          desvio_defensivo) %>%
   distinct()
 
-head(Distribuciones)
+head(Distribuciones) %>%
+  gt()
 
 qatar <- c("Qatar",1,1,1,1)
 
@@ -176,8 +179,10 @@ A continuación se desarrolla la función que hará este computo.
 
 ### Función para simular partidos
 
+Para simular los partidos se genera un loop que recorre el cronograma y va simulando uno a uno los encuentros utilizando las distribuciones obtenidas para cada equipo.
 
-```{r pressure, echo=TRUE, warning=FALSE}
+
+```{r pressure, results='asis', echo=FALSE, warning=FALSE}
 
 partidos_programados <- read.csv("Partidos.csv")
 
@@ -256,14 +261,22 @@ distribuciones_por_encuentro <- ggplot(distribucion_resultados, aes(x="", y=freq
   geom_bar(stat="identity", width=1) +
   coord_polar("y", start=0)+
   theme_void() +
-  labs(title = glue("Distribución de resultados para {equipo1} vs {equipo2}"))
-
+  labs(title = glue("Partido {i}: Distribución de resultados para {equipo1} vs {equipo2}"))+
+  theme(title = element_text(size = 12))
 
 plot(distribuciones_por_encuentro)
 
-print(head(detalle_resultados, 5))
+top_5_resultados <- detalle_resultados %>%
+  head(5) %>%
+  gt() %>%
+  tab_header( title = glue("Top 5 resultados para {equipo1} vs {equipo2}")) %>%
+  print()
 
-print(distribucion_resultados)
+Distribuciones_con_probs <- distribucion_resultados %>%
+  gt() %>%
+  tab_header(title = glue("Probabilidades para {equipo1} vs {equipo2}")) %>%
+  print()
+
 
 }
 
