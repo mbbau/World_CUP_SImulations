@@ -262,7 +262,7 @@ distribuciones_por_encuentro <- ggplot(distribucion_resultados, aes(x="", y=freq
   coord_polar("y", start=0)+
   theme_void() +
   labs(title = glue("Partido {i}: Distribución de resultados para {equipo1} vs {equipo2}"))+
-  theme(title = element_text(size = 12))
+  theme(title = element_text(size = 14))
 
 plot(distribuciones_por_encuentro)
 
