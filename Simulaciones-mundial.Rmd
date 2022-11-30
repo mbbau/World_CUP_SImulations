@@ -262,7 +262,7 @@ distribuciones_por_encuentro <- ggplot(distribucion_resultados, aes(x="", y=freq
   coord_polar("y", start=0)+
   theme_void() +
   labs(title = glue("Partido {i}: Distribución de resultados para {equipo1} vs {equipo2}"))+
-  theme(title = element_text(size = 14))
+  theme(title = element_text(size = 13))
 
 plot(distribuciones_por_encuentro)
 
@@ -283,9 +283,7 @@ Distribuciones_con_probs <- distribucion_resultados %>%
 
 ```
 
-### Partidos
 
-Una vez establecida la formula para generar las simulaciones, incluiremos un dataset nuevo que contiene todos los partidos que se deben disputar en la fase de grupos.
 
 
 
