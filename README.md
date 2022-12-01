@@ -1,3 +1,283 @@
 # World_Cup_Simulations
 
 In this repository I will use World cup data to make simulations of the matches in the Qatar world cup.
+
+
+```{r setup, include=FALSE, echo=FALSE}
+
+library(tidyverse)
+library(patchwork)
+library(data.table)
+library(glue)
+library(gt)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+En este trabajo, utilizaremos datos históricos de los mundiales de futbol para simular los diferentes partidos de Quatar 2022 y obtener los resultados más probables en cada enfrentamiento. Para ello, generaremos las distribuciones de los goles que los equipos han hecho y han recibido. 
+
+## Dataset
+
+El dataset seleccionado para estas simulaciones podran encontrarlo en la página de [Kaggle](https://www.kaggle.com/datasets/abecklas/fifa-world-cup).
+
+De este Dataset utilizaremos unicamente el nombre del equipo local, los goles realizados por el equipo local y los goles recibidos. A la hora de generar las simulaciones haremos un par de supuestos en función de las distribuciones en cuanto al poder ofensivo y defensivo de cada equipo, y adaptaremos los resultados de forma acorde, es decir, si en una de las simulaciones un equipo hará 3 goles pero se enfrenta a un equipo que tiene un gran poder defensido y el mismo recibe solo 1, consideraremos entonces el promedio de los dos valores para la cantidad de goles que hará el equipo atacante, pero si el equipo que defiende no tiene un gran poder defensivo, el número de goles será el obtenido en la simulación.
+
+
+
+```{r World cup data}
+
+dataset <- read.csv("WorldCupMatches.csv")
+
+head(dataset)
+
+datos_a_utilzar <- dataset %>%
+  select(c(Home.Team.Name, 
+           Home.Team.Goals, 
+           Away.Team.Goals, 
+           Away.Team.Name))
+
+head(datos_a_utilzar) %>% 
+  gt()
+
+```
+
+### Limpieza de datos
+
+En el dataset, existen varios nombres de equipos que tienen errores de ortografía, como así también se necesita utilizar además los resultados obtenidos por los equipos visitantes, es decir, extraer la última columna y anexar esos datos al final del dataset.
+
+```{r Using away.team data}
+
+segunda_tanda <- datos_a_utilzar %>%
+  select(c(Away.Team.Name,
+           Away.Team.Goals,
+           Home.Team.Goals,
+           Home.Team.Name))
+
+colnames(segunda_tanda) <- c("Home.Team.Name",
+                             "Home.Team.Goals",
+                             "Away.Team.Goals",
+                             "Away.Team.Name")
+
+head(segunda_tanda) %>%
+  gt()
+
+datos_a_utilzar <- rbind(datos_a_utilzar,
+                         segunda_tanda)
+
+
+```
+Ahora que los datos ya están completos para ser utilizados, revisaremos los nombres de los equipos con el fin de detectar anomalías que deberan ser corregidas.
+
+```{r Cleanning team names, echo=FALSE}
+
+datos_a_utilzar$Home.Team.Name <- gsub("rn\">",
+                                       "",
+                                       as.character(datos_a_utilzar$Home.Team.Name))
+datos_a_utilzar$Home.Team.Name <- gsub("German DR",
+                                       "Germany",
+                                       as.character(datos_a_utilzar$Home.Team.Name))
+datos_a_utilzar$Home.Team.Name <- gsub("Germany FR",
+                                       "Germany",
+                                       as.character(datos_a_utilzar$Home.Team.Name))
+datos_a_utilzar$Home.Team.Name <- gsub("IR Iran",
+                                       "Iran",
+                                       as.character(datos_a_utilzar$Home.Team.Name))
+datos_a_utilzar$Home.Team.Name <- gsub("China PR",
+                                       "China",
+                                       as.character(datos_a_utilzar$Home.Team.Name))
+datos_a_utilzar$Home.Team.Name <- gsub("Soviet Union",
+                                       "Russia",
+                                       as.character(datos_a_utilzar$Home.Team.Name))
+datos_a_utilzar$Home.Team.Name <- gsub("Korea Republic",
+                                       "South Korea",
+                                       as.character(datos_a_utilzar$Home.Team.Name))
+datos_a_utilzar$Home.Team.Name <- gsub("Korea Republic",
+                                       "South Korea",
+                                       as.character(datos_a_utilzar$Home.Team.Name))
+
+
+unique(datos_a_utilzar$Home.Team.Name)
+
+```
+
+
+## Distribuciones
+
+A continuación se presenta un ejemplo de las distribuciones que utilizaremos para cada equipo, es decir, en cada enfrentamiento se simularán cuantos goles puede hacer, como así también cuantos puede recibir cada equipo en la disputa, y en función de eso se computará el resultado siguiendo las reglas anteriormente descriptas.
+
+
+```{r Distributions, echo=FALSE, warning=FALSE}
+
+histograma_a_favor_Italia <- datos_a_utilzar %>%
+  filter(Home.Team.Name == "Italy") %>%
+  ggplot(aes(x=Home.Team.Goals))+
+  geom_histogram(binwidth = 1,
+                 fill = "darkgreen")+
+  ggtitle("Goles a favor de Italia")+
+  theme_minimal()+
+  labs(x = "Goles a favor",
+       y = element_blank())
+
+histograma_en_contra_Italia <- datos_a_utilzar %>%
+  filter(Home.Team.Name == "Italy") %>%
+  ggplot(aes(x=Away.Team.Goals))+
+  geom_histogram(binwidth = 1,
+                 fill = "darkblue")+
+  ggtitle("Goles en contra de Italia")+
+  theme_minimal()+
+  labs(x = "Goles en contra",
+       y = element_blank())
+
+histograma_a_favor_Italia + histograma_en_contra_Italia
+
+
+```
+
+De esta distribuciones computaremos las medias y los desvios con el objetivo de utilizarlos para realizar las simulaciones. El dataset final con estos datos se muestra a continuación.
+
+```{r dataset de Distributions, echo=FALSE, warning=FALSE}
+
+Distribuciones <- datos_a_utilzar %>%
+  drop_na() %>%
+  group_by(Home.Team.Name) %>%
+  summarize(promedio_ofensivo = mean(Home.Team.Goals),
+         desvio_ofensivo = sd(Home.Team.Goals),
+         promedio_defensivo = mean(Away.Team.Goals),
+         desvio_defensivo = sd(Away.Team.Goals)) %>%
+  select(Home.Team.Name,
+         promedio_ofensivo,
+         desvio_ofensivo,
+         promedio_defensivo,
+         desvio_defensivo) %>%
+  distinct()
+
+head(Distribuciones) %>%
+  gt()
+
+qatar <- c("Qatar",1,1,1,1)
+
+Distribuciones <- rbind(Distribuciones, qatar)
+
+```
+
+## Simulaciones
+
+### Definición de reglas para simulación
+
+Para simular cada partido se computarán cuatro variables en cada partido:
+
+1 - Los goles que puede hacer en promedio cada equipo.
+2 - Los goles que puede recibir en promedio cada equipo.
+
+Con estos valores el resultado del partido estará dado por la relación entre los goles que puede marcar un equipo contra los que puede recibir el otro equipo, considerando que si los goles a favor son menor a los que puede recibir el otro equipo, se considerará el promedio de ambos valores, pero si los goles a favor son menores que los goles que recibe el equipo rival, entonces se computará este resutlado.
+
+A continuación se desarrolla la función que hará este computo.
+
+### Función para simular partidos
+
+Para simular los partidos se genera un loop que recorre el cronograma y va simulando uno a uno los encuentros utilizando las distribuciones obtenidas para cada equipo.
+
+
+```{r pressure, results='asis', echo=FALSE, warning=FALSE}
+
+partidos_programados <- read.csv("Partidos.csv")
+
+Distribuciones$promedio_ofensivo <- as.double(Distribuciones$promedio_ofensivo)
+Distribuciones$desvio_ofensivo <- as.double(Distribuciones$desvio_ofensivo)
+Distribuciones$promedio_defensivo <- as.double(Distribuciones$promedio_defensivo)
+Distribuciones$desvio_defensivo <- as.double(Distribuciones$desvio_defensivo)
+
+for (i in 1:nrow(partidos_programados)) {
+
+  equipo1 <- partidos_programados$Equipo1[i]
+  
+  equipo2 <- partidos_programados$Equipo2[i]
+  
+  datos_equipo1 <- Distribuciones %>%
+    filter(Home.Team.Name == equipo1)
+  
+  datos_equipo2 <- Distribuciones %>%
+    filter(Home.Team.Name == equipo2)
+  
+  runs = 10000
+  
+  goles_a_favor_equipo1 <- rnorm(runs,
+                                mean = datos_equipo1$promedio_ofensivo,
+                                sd = datos_equipo1$desvio_ofensivo) %>%
+    pmax(0) %>% #with this I filter values bellow zero
+    round()     #with this I round all the numbers
+  goles_en_contra_equipo1 <- rnorm(runs,
+                              mean = datos_equipo1$promedio_defensivo,
+                              sd = datos_equipo1$desvio_defensivo) %>%
+  pmax(0) %>% #with this I filter values bellow zero
+  round()     #with this I round all the numbers  
+  
+  goles_a_favor_equipo2 <- rnorm(runs,
+                                mean = datos_equipo2$promedio_ofensivo,
+                                sd = datos_equipo2$desvio_ofensivo) %>%
+    pmax(0) %>% #with this I filter values bellow zero
+    round()     #with this I round all the numbers
+  goles_en_contra_equipo2 <- rnorm(runs,
+                              mean = datos_equipo2$promedio_defensivo,
+                              sd = datos_equipo2$desvio_defensivo) %>%
+  pmax(0) %>% #with this I filter values bellow zero
+  round()     #with this I round all the numbers 
+  
+  gol_local <- as_tibble(cbind(goles_a_favor_equipo1,
+                     goles_en_contra_equipo2))
+  
+  gol_local$gol_local <- round(case_when(goles_a_favor_equipo1 <= goles_en_contra_equipo2 ~ goles_a_favor_equipo1,
+                                   goles_a_favor_equipo1 > goles_en_contra_equipo2 ~ (goles_a_favor_equipo1+goles_en_contra_equipo2)/2 ))
+
+  gol_visitante <- as_tibble(cbind(goles_a_favor_equipo2,
+                     goles_en_contra_equipo1))
+  
+  gol_visitante$gol_visitante <- round(case_when(goles_a_favor_equipo2 <= goles_en_contra_equipo1 ~ goles_a_favor_equipo2,
+                                   goles_a_favor_equipo2 > goles_en_contra_equipo1 ~ (goles_a_favor_equipo2+goles_en_contra_equipo1)/2 ))
+  
+  matches <- as_tibble(cbind(gol_local$gol_local, gol_visitante$gol_visitante))
+  colnames(matches) <- c("score_local", "score_visitante")
+  
+  matches$resultado <- case_when(matches$score_local > matches$score_visitante ~ equipo1,
+                                 matches$score_local < matches$score_visitante ~ equipo2,
+                                 matches$score_local == matches$score_visitante ~ "empate")
+
+distribucion_resultados <- matches %>%
+  group_by(resultado) %>%
+  dplyr::summarise(cnt = n()) %>%
+  mutate(freq = round(cnt / sum(cnt), 3)) %>%
+  arrange(desc(freq))
+
+detalle_resultados <- setDT(matches)[,list(Count=.N),names(matches)] %>%
+  arrange(desc(Count)) %>%
+  mutate(probabilidad = (Count / runs)*100)
+
+
+distribuciones_por_encuentro <- ggplot(distribucion_resultados, aes(x="", y=freq, fill=resultado)) +
+  geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0)+
+  theme_void() +
+  labs(title = glue("Partido {i}: Distribución de resultados para {equipo1} vs {equipo2}"))+
+  theme(title = element_text(size = 13))
+
+plot(distribuciones_por_encuentro)
+
+top_5_resultados <- detalle_resultados %>%
+  head(5) %>%
+  gt() %>%
+  tab_header( title = glue("Top 5 resultados para {equipo1} vs {equipo2}")) %>%
+  print()
+
+Distribuciones_con_probs <- distribucion_resultados %>%
+  gt() %>%
+  tab_header(title = glue("Probabilidades para {equipo1} vs {equipo2}")) %>%
+  print()
+
+
+}
+
+
+```
+
